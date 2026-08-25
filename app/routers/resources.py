@@ -3,7 +3,7 @@ from supabase import Client
 from ..deps import current_supabase,current_user
 from ..crud import *
 from ..schemas import *
-
+from fastapi.encoders import jsonable_encoder
 router=APIRouter(tags=["Business"])
 
 def make_list(db, table, shop_id, limit, offset):
@@ -27,8 +27,31 @@ def supplier_create(shop_id:int,body:SupplierCreate,db:Client=Depends(current_su
 def products(shop_id:int,limit:int=100,offset:int=0,db:Client=Depends(current_supabase),user=Depends(current_user)):
     require_role(db,user["id"],shop_id,["OWNER","ADMIN","EMPLOYEE"]); return make_list(db,"products",shop_id,limit,offset)
 @router.post("/shops/{shop_id}/products")
-def product_create(shop_id:int,body:ProductCreate,db:Client=Depends(current_supabase),user=Depends(current_user)):
-    require_role(db,user["id"],shop_id,["OWNER","ADMIN"]); return insert(db,"products",body.model_dump(exclude_none=True))
+def product_create(
+    shop_id: int,
+    body: ProductCreate,
+    db: Client = Depends(current_supabase),
+    user=Depends(current_user)
+):
+    require_role(
+        db,
+        user["id"],
+        shop_id,
+        ["OWNER", "ADMIN"]
+    )
+
+    payload = body.model_dump(
+        exclude_none=True,
+        mode="json"
+    )
+
+    payload["shop_id"] = shop_id
+
+    return insert(
+        db,
+        "products",
+        payload
+    )
 @router.patch("/products/{product_id}")
 def product_update(product_id:int,body:ProductUpdate,db:Client=Depends(current_supabase),user=Depends(current_user)):
     if body.shop_id is not None: require_role(db,user["id"],body.shop_id,["OWNER","ADMIN"])
@@ -40,7 +63,11 @@ def purchases(shop_id:int,limit:int=100,offset:int=0,db:Client=Depends(current_s
     require_role(db,user["id"],shop_id,["OWNER","ADMIN","EMPLOYEE"]); return make_list(db,"purchases",shop_id,limit,offset)
 @router.post("/shops/{shop_id}/purchases")
 def purchase_create(shop_id:int,body:PurchaseCreate,db:Client=Depends(current_supabase),user=Depends(current_user)):
-    require_role(db,user["id"],shop_id,["OWNER","ADMIN"]); return insert(db,"purchases",body.model_dump(exclude_none=True))
+
+    require_role(db,user["id"],shop_id,["OWNER","ADMIN"])
+    payload = body.model_dump(exclude_none=True,mode="json")
+    payload["shop_id"] = shop_id
+    return insert(db,"purchases",payload)
 
 @router.post("/purchases/{purchase_id}/items")
 def purchase_item_create(purchase_id:int,body:PurchaseItemCreate,db:Client=Depends(current_supabase),user=Depends(current_user)):
