@@ -1,0 +1,21 @@
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    app_name: str = "Business Management API"
+    app_env: str = "development"
+    api_prefix: str = "/api/v1"
+    supabase_url: str
+    supabase_anon_key: str
+    supabase_service_role_key: str | None = None
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def cors_list(self) -> list[str]:
+        return [x.strip() for x in self.cors_origins.split(",") if x.strip()]
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
